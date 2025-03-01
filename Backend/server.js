@@ -14,6 +14,8 @@ app.use(cookieParser());
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/expense", authRoutes);
+app.use("/api/debt", authRoutes);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () =>
