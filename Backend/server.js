@@ -1,17 +1,19 @@
 import express from "express";
+import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import connectDB from "./config/db.js";
+
+dotenv.config();
+connectDB();
 
 const app = express();
-const PORT = process.env.PORT || 4000;
 
-// Middleware
 app.use(express.json());
+app.use(cookieParser());
+app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 
-// Sample Route
-app.get("/", (req, res) => {
-  res.send("Express Server is Running with ES6 Modules!");
-});
-
-// Start Server
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () =>
+  console.log(`Server running on http://localhost:${PORT}`)
+);
