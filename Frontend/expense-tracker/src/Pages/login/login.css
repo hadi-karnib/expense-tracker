@@ -16,3 +16,10 @@
   margin: 1rem;
   border-radius: 8px;
 }
+.wrapping-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 24px;
+}
