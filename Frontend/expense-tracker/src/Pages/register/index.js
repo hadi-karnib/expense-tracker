@@ -8,10 +8,11 @@ import "./register.css";
 const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
 
-  const handleLogin = (e) => {
+  const handleRegister = (e) => {
     e.preventDefault();
-    console.log("Logging in with", { email, password });
+    console.log("Logging in with", { username, email, password });
   };
 
   // Common styles for the TextFields
@@ -44,27 +45,7 @@ const Register = () => {
     >
       <div className="wrapping-container">
         {/* Left Side: Animation */}
-        <Box
-          sx={{
-            flex: "1 1 400px", // Grows/Shrinks with a min size of ~400px
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            maxWidth: 600,
-            mb: { xs: 4, md: 0 }, // Margin bottom on small screens
-          }}
-        >
-          <Lottie
-            animationData={authAnimation}
-            style={{
-              width: "100%",
-              maxWidth: 500,
-              height: "auto",
-            }}
-          />
-        </Box>
 
-        {/* Right Side: Login Form */}
         <Box
           sx={{
             flex: "1 1 300px",
@@ -92,19 +73,19 @@ const Register = () => {
                 boxShadow: "0px 0px 20px 0px rgba(0,0,0,0)",
               }}
             >
-              {/* Set Login text to green */}
+              {/* Set Register text to green */}
               <Typography
                 variant="h4"
                 component="h1"
                 gutterBottom
                 sx={{ color: "#388E3C" }}
               >
-                Login
+                Register
               </Typography>
 
               <Box
                 component="form"
-                onSubmit={handleLogin}
+                onSubmit={handleRegister}
                 sx={{
                   mt: 2,
                   display: "flex",
@@ -113,11 +94,57 @@ const Register = () => {
                 }}
               >
                 <TextField
+                  label="Username"
+                  variant="outlined"
+                  fullWidth
+                  margin="normal"
+                  required
+                  sx={{
+                    // Make label text green (default and focused)
+                    "& label": {
+                      color: "#388E3C",
+                    },
+                    "& label.Mui-focused": {
+                      color: "#388E3C",
+                    },
+
+                    // Make outlined border green (default, hover, and focused)
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: "#388E3C",
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: "#388E3C",
+                      },
+                    },
+
+                    // Make placeholder text green
+                    "& .MuiOutlinedInput-input::placeholder": {
+                      color: "#388E3C",
+                    },
+
+                    // Optionally remove the blue focus ring (browser default):
+                    "& .MuiOutlinedInput-root.Mui-focused": {
+                      boxShadow: "none",
+                      outline: "none",
+                    },
+
+                    // If Chrome autofills the field with a blue background or text:
+                    "& input:-webkit-autofill": {
+                      WebkitBoxShadow: "0 0 0 100px #fff inset",
+                      WebkitTextFillColor: "#388E3C",
+                    },
+                  }}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+                <TextField
                   label="Email"
                   variant="outlined"
                   fullWidth
                   required
                   sx={{
+                    mt: 1,
                     // Make label text green (default and focused)
                     "& label": {
                       color: "#388E3C",
@@ -207,7 +234,7 @@ const Register = () => {
                 />
 
                 <CustomButton
-                  text="Login"
+                  text="Register"
                   fullWidth
                   type="submit"
                   sx={{
@@ -224,22 +251,43 @@ const Register = () => {
 
                 {/* Don't Have an Account? */}
                 <Typography variant="body2" sx={{ mt: 2 }}>
-                  Don’t have an account?{" "}
+                  Already have an account?{" "}
                   <Link
-                    to="/register"
+                    to="/login"
                     style={{
                       color: "#388E3C",
                       textDecoration: "none",
                       fontWeight: "bold",
                     }}
                   >
-                    Register
+                    Login
                   </Link>
                 </Typography>
               </Box>
             </Paper>
           </Container>
         </Box>
+        <Box
+          sx={{
+            flex: "1 1 400px", // Grows/Shrinks with a min size of ~400px
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            maxWidth: 600,
+            mb: { xs: 4, md: 0 }, // Margin bottom on small screens
+          }}
+        >
+          <Lottie
+            animationData={authAnimation}
+            style={{
+              width: "100%",
+              maxWidth: 500,
+              height: "auto",
+            }}
+          />
+        </Box>
+
+        {/* Right Side: Register Form */}
       </div>
     </Box>
   );
