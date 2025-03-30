@@ -4,7 +4,7 @@ import { Box, Container, TextField, Typography, Paper } from "@mui/material";
 import Lottie from "lottie-react";
 import CustomButton from "../../components/CustomButton.js";
 import authAnimation from "../../animations/auth_animation.json";
-
+//added a comment
 import "./login.css";
 
 const Login = () => {
