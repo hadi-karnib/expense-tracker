@@ -1,0 +1,11 @@
+/* App-level styles are handled by MUI theme. Keep this file minimal. */
+::-webkit-scrollbar{
+  width: 10px;
+}
+::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,0.12);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track{
+  background: transparent;
+}

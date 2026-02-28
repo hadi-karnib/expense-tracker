@@ -1,177 +1,203 @@
 import Expense from "../models/Expense.js";
 
-// Utility function for validating input
+/**
+ * Recurring helpers
+ */
+function monthKeyFrom(month, year) {
+  const m = String(month).padStart(2, "0");
+  return `${year}-${m}`;
+}
+
+function clampDayToMonth(year, month, day) {
+  // month is 1-12
+  const last = new Date(year, month, 0).getDate();
+  return Math.min(Math.max(1, day), last);
+}
+
+async function ensureRecurringForMonth(userId, month, year) {
+  // Ensure that for each recurring template, we have one instance in this month.
+  const templates = await Expense.find({
+    userId,
+    isTemplate: true,
+    isRecurring: true,
+    "recurring.freq": "monthly",
+  }).lean();
+
+  if (!templates.length) return;
+
+  const y = Number(year);
+  const m = Number(month);
+
+  for (const t of templates) {
+    const dom = clampDayToMonth(y, m, t.recurring?.dayOfMonth || 1);
+    const key = `recur:${t._id}:${monthKeyFrom(m, y)}`;
+
+    const exists = await Expense.findOne({ userId, autoKey: key }).lean();
+    if (exists) continue;
+
+    const dt = new Date(Date.UTC(y, m - 1, dom, 12, 0, 0)); // stable midday UTC
+
+    await Expense.create({
+      userId,
+      category: t.category,
+      amount: t.amount,
+      date: dt,
+      description: t.description,
+      isRecurring: true,
+      isTemplate: false,
+      templateId: t._id,
+      autoKey: key,
+      recurring: t.recurring || { freq: "monthly", dayOfMonth: dom },
+    });
+  }
+}
+
+// Validation
 const validateExpenseInput = (category, amount, date, description) => {
-  if (!category || typeof category !== "string") {
-    return "Category is required and must be a string.";
-  }
-  if (!amount || typeof amount !== "number" || amount <= 0) {
-    return "Amount is required and must be a positive number.";
-  }
-  if (!date || isNaN(new Date(date).getTime())) {
-    return "A valid date is required.";
-  }
-  if (description && typeof description !== "string") {
-    return "Description must be a string.";
-  }
-  return null; // No errors
+  if (!category || typeof category !== "string") return "Category is required and must be a string.";
+  if (!amount || typeof amount !== "number" || amount <= 0) return "Amount is required and must be a positive number.";
+  if (!date || isNaN(new Date(date).getTime())) return "A valid date is required.";
+  if (description && typeof description !== "string") return "Description must be a string.";
+  return null;
 };
 
-// Add a new expense
+// Add a new expense (supports recurring templates)
 export const addExpense = async (req, res) => {
   try {
-    const { category, amount, date, description } = req.body;
-    const validationError = validateExpenseInput(
-      category,
-      amount,
-      date,
-      description
-    );
-    if (validationError) {
-      return res.status(400).json({ message: validationError });
+    const { category, amount, date, description, isRecurring, recurring, asTemplate } = req.body;
+
+    const validationError = validateExpenseInput(category, amount, date, description);
+    if (validationError) return res.status(400).json({ message: validationError });
+
+    const userId = req.user.userId;
+
+    // Non-recurring: create normal record
+    if (!isRecurring) {
+      const expense = await Expense.create({
+        userId,
+        category: category.trim(),
+        amount,
+        date,
+        description,
+      });
+      return res.status(201).json({ message: "Expense added successfully", expense });
     }
 
-    const expense = new Expense({
-      userId: req.user.userId, // Extracted from middleware
-      category,
+    // Recurring: create template + this month's instance
+    const rec = {
+      freq: "monthly",
+      dayOfMonth: Number(recurring?.dayOfMonth || new Date(date).getUTCDate() || 1),
+    };
+
+    const template = await Expense.create({
+      userId,
+      category: category.trim(),
       amount,
       date,
       description,
+      isRecurring: true,
+      isTemplate: true,
+      recurring: rec,
     });
 
-    await expense.save();
-    res.status(201).json({ message: "Expense added successfully", expense });
+    // Create the instance for the month of the given date
+    const d = new Date(date);
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth() + 1;
+    const dom = clampDayToMonth(y, m, rec.dayOfMonth);
+    const key = `recur:${template._id}:${monthKeyFrom(m, y)}`;
+    const instDate = new Date(Date.UTC(y, m - 1, dom, 12, 0, 0));
+
+    const expense = await Expense.create({
+      userId,
+      category: template.category,
+      amount: template.amount,
+      date: instDate,
+      description: template.description,
+      isRecurring: true,
+      isTemplate: false,
+      templateId: template._id,
+      autoKey: key,
+      recurring: rec,
+    });
+
+    return res.status(201).json({
+      message: "Recurring expense created",
+      expense,
+      template: asTemplate === false ? undefined : template,
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
-// Get all expenses for the logged-in user
+// Get all expenses (excluding templates by default)
 export const getExpenses = async (req, res) => {
   try {
-    const expenses = await Expense.find({ userId: req.user.userId }).sort({
-      date: -1,
-    });
+    const expenses = await Expense.find({ userId: req.user.userId, isTemplate: { $ne: true } }).sort({ date: -1 });
     res.json(expenses);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
-// Get expenses filtered by month & year
+// Get expenses filtered by month & year (auto-generates recurring instances)
 export const getExpensesByMonth = async (req, res) => {
   try {
     const { month, year } = req.query;
-    if (!month || !year) {
-      return res.status(400).json({ message: "Month and year are required." });
-    }
+    if (!month || !year) return res.status(400).json({ message: "Month and year are required." });
 
-    const startDate = new Date(`${year}-${month}-01`);
-    const endDate = new Date(startDate);
-    endDate.setMonth(endDate.getMonth() + 1);
+    const userId = req.user.userId;
+
+    // ensure recurring instances exist
+    await ensureRecurringForMonth(userId, month, year);
+
+    const startDate = new Date(Date.UTC(Number(year), Number(month) - 1, 1, 0, 0, 0));
+    const endDate = new Date(Date.UTC(Number(year), Number(month), 1, 0, 0, 0));
 
     const expenses = await Expense.find({
-      userId: req.user.userId,
+      userId,
+      isTemplate: { $ne: true },
       date: { $gte: startDate, $lt: endDate },
     }).sort({ date: -1 });
 
     res.json(expenses);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
-//update expenses
+
+// Update expense (if updating a template, future instances won't auto-update yet)
 export const updateExpense = async (req, res) => {
   try {
     const { id, category, amount, date, description } = req.body;
 
-    if (!id) {
-      return res.status(400).json({ message: "Expense ID is required." });
-    }
+    const validationError = validateExpenseInput(category, amount, date, description);
+    if (validationError) return res.status(400).json({ message: validationError });
 
-    const allowedFields = { category, amount, date, description };
-    const updates = {};
-
-    // Validate input dynamically
-    for (const [key, value] of Object.entries(allowedFields)) {
-      if (value !== undefined) {
-        if (
-          key === "category" &&
-          (typeof value !== "string" || value.trim() === "")
-        ) {
-          return res
-            .status(400)
-            .json({ message: "Category must be a non-empty string." });
-        }
-        if (key === "amount" && (typeof value !== "number" || value <= 0)) {
-          return res
-            .status(400)
-            .json({ message: "Amount must be a positive number." });
-        }
-        if (key === "date" && isNaN(new Date(value).getTime())) {
-          return res.status(400).json({ message: "Invalid date format." });
-        }
-        if (key === "description" && typeof value !== "string") {
-          return res
-            .status(400)
-            .json({ message: "Description must be a string." });
-        }
-        updates[key] = value; // Store valid updates
-      }
-    }
-
-    // Find and update the expense using `req.body.id`
-    const expense = await Expense.findOneAndUpdate(
-      { _id: id, userId: req.user.userId }, // Ensure user owns the expense
-      { $set: updates },
-      { new: true } // Returns the updated document
+    const updatedExpense = await Expense.findOneAndUpdate(
+      { _id: id, userId: req.user.userId },
+      { category: category.trim(), amount, date, description },
+      { new: true }
     );
 
-    if (!expense) {
-      return res
-        .status(404)
-        .json({ message: "Expense not found or unauthorized." });
-    }
+    if (!updatedExpense) return res.status(404).json({ message: "Expense not found." });
 
-    res.json({ message: "Expense updated successfully", expense });
+    res.json({ message: "Expense updated successfully", expense: updatedExpense });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
-// Delete an expense (uses `req.body.id`)
+// Delete expense
 export const deleteExpense = async (req, res) => {
   try {
     const { id } = req.body;
+    const deletedExpense = await Expense.findOneAndDelete({ _id: id, userId: req.user.userId });
+    if (!deletedExpense) return res.status(404).json({ message: "Expense not found." });
 
-    if (!id) {
-      return res.status(400).json({ message: "Expense ID is required." });
-    }
-
-    // Find and delete the expense using `req.body.id`
-    const expense = await Expense.findOneAndDelete({
-      _id: id,
-      userId: req.user.userId, // Ensure user owns the expense
-    });
-
-    if (!expense) {
-      return res
-        .status(404)
-        .json({ message: "Expense not found or unauthorized." });
-    }
-
-    res.json({ message: "Expense deleted successfully." });
+    res.json({ message: "Expense deleted successfully" });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
