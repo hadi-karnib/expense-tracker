@@ -38,6 +38,7 @@ export default function LoginPage() {
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
+        err?.message ||
         "Login failed. Please check your credentials.";
       setError(msg);
     } finally {

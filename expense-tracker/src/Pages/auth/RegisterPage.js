@@ -39,6 +39,7 @@ export default function RegisterPage() {
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
+        err?.message ||
         "Registration failed.";
       setError(msg);
     } finally {

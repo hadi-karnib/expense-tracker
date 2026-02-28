@@ -140,21 +140,30 @@ export default function Sidebar({ open, onClose }) {
     );
   }
 
+  // Desktop/tablet: reserve layout space for the sidebar.
+  // MUI Drawer uses position: fixed by default which can overlap the page.
+  // Wrapping it and forcing the paper to be relative prevents “sidebar eating the page”.
   return (
-    <Drawer
-      variant="permanent"
-      open
-      PaperProps={{
-        sx: {
+    <Box sx={{ width: drawerWidth, flexShrink: 0 }}>
+      <Drawer
+        variant="permanent"
+        open
+        sx={{
           width: drawerWidth,
-          borderRight: `1px solid ${alpha(
-            theme.palette.mode === "dark" ? "#ffffff" : "#0b0f19",
-            0.08
-          )}`,
-        },
-      }}
-    >
-      {content}
-    </Drawer>
+          flexShrink: 0,
+          "& .MuiDrawer-paper": {
+            width: drawerWidth,
+            boxSizing: "border-box",
+            position: "relative",
+            borderRight: `1px solid ${alpha(
+              theme.palette.mode === "dark" ? "#ffffff" : "#0b0f19",
+              0.08
+            )}`,
+          },
+        }}
+      >
+        {content}
+      </Drawer>
+    </Box>
   );
 }

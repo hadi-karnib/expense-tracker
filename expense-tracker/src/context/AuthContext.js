@@ -17,9 +17,12 @@ export function AuthProvider({ children }) {
   const refreshSession = useCallback(async () => {
     try {
       const data = await apiMe();
-      setUser(data?.user || null);
+      const u = data?.user || null;
+      setUser(u);
+      return u;
     } catch {
       setUser(null);
+      return null;
     } finally {
       setReady(true);
     }
@@ -32,7 +35,15 @@ export function AuthProvider({ children }) {
   const login = useCallback(
     async ({ email, password }) => {
       const data = await apiLogin({ email, password });
-      await refreshSession();
+      const u = await refreshSession();
+
+      // If backend responded OK but we still can't read /me, it's almost always a cookie issue
+      // (common on iOS Safari/Brave when frontend+backend are on different domains).
+      if (!u) {
+        throw new Error(
+          "Login succeeded but session was not stored (cookie blocked). If you're on iPhone/iPad, deploy the Vercel /api proxy and set BACKEND_URL.",
+        );
+      }
       return data;
     },
     [refreshSession],
@@ -41,7 +52,12 @@ export function AuthProvider({ children }) {
   const register = useCallback(
     async ({ username, email, password }) => {
       const data = await apiRegister({ username, email, password });
-      await refreshSession();
+      const u = await refreshSession();
+      if (!u) {
+        throw new Error(
+          "Account created but session was not stored (cookie blocked). If you're on iPhone/iPad, deploy the Vercel /api proxy and set BACKEND_URL.",
+        );
+      }
       return data;
     },
     [refreshSession],
