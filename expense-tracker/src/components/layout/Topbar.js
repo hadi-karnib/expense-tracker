@@ -6,7 +6,6 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  Stack,
   Toolbar,
   Typography,
 } from "@mui/material";
@@ -36,11 +35,14 @@ function titleFromPath(pathname) {
 
 export default function Topbar({ onOpenSidebar }) {
   const { mode, toggleMode, currency, setCurrency } = useSettings();
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const title = useMemo(() => titleFromPath(location.pathname), [location.pathname]);
+  const title = useMemo(
+    () => titleFromPath(location.pathname),
+    [location.pathname],
+  );
 
   const [anchor, setAnchor] = useState(null);
   const open = Boolean(anchor);

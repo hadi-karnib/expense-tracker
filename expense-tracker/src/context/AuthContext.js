@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { apiLogin, apiLogout, apiMe, apiRegister } from "../api/auth";
 
 const AuthContext = createContext(null);
@@ -7,7 +14,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
 
-  const refreshSession = async () => {
+  const refreshSession = useCallback(async () => {
     try {
       const data = await apiMe();
       setUser(data?.user || null);
@@ -16,32 +23,37 @@ export function AuthProvider({ children }) {
     } finally {
       setReady(true);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refreshSession();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshSession]);
 
-  const login = async ({ email, password }) => {
-    const data = await apiLogin({ email, password });
-    await refreshSession();
-    return data;
-  };
+  const login = useCallback(
+    async ({ email, password }) => {
+      const data = await apiLogin({ email, password });
+      await refreshSession();
+      return data;
+    },
+    [refreshSession],
+  );
 
-  const register = async ({ username, email, password }) => {
-    const data = await apiRegister({ username, email, password });
-    await refreshSession();
-    return data;
-  };
+  const register = useCallback(
+    async ({ username, email, password }) => {
+      const data = await apiRegister({ username, email, password });
+      await refreshSession();
+      return data;
+    },
+    [refreshSession],
+  );
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await apiLogout();
     } finally {
       setUser(null);
     }
-  };
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -53,7 +65,7 @@ export function AuthProvider({ children }) {
       logout,
       refreshSession,
     }),
-    [ready, user]
+    [ready, user, login, register, logout, refreshSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
