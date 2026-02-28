@@ -67,7 +67,11 @@ export default function DashboardPage() {
   const { debts, loading: loadingDebts } = useDebtsData();
   const now = new Date();
   const monthKey = format(now, "yyyy-MM");
-  const { income: monthIncome, loading: loadingIncome, reload: reloadIncome } = useIncomeMonthData(monthKey);
+  const {
+    income: monthIncome,
+    loading: loadingIncome,
+    reload: reloadIncome,
+  } = useIncomeMonthData(monthKey);
 
   const [salaryOpen, setSalaryOpen] = useState(false);
   const [salaryAmount, setSalaryAmount] = useState(0);
@@ -75,11 +79,8 @@ export default function DashboardPage() {
   const [salaryBusy, setSalaryBusy] = useState(false);
   const [salaryErr, setSalaryErr] = useState("");
 
-
-
   const loading = loadingExpenses || loadingDebts || loadingIncome;
 
-  const now = new Date();
   const thisMonthStart = startOfMonth(now);
   const thisMonthEnd = endOfMonth(now);
   const prevMonthStart = startOfMonth(subMonths(now, 1));
@@ -105,7 +106,7 @@ export default function DashboardPage() {
 
   const thisMonthTotal = useMemo(() => sum(monthExpenses), [monthExpenses]);
 
-    const thisMonthIncomeTotal = useMemo(() => sum(monthIncome), [monthIncome]);
+  const thisMonthIncomeTotal = useMemo(() => sum(monthIncome), [monthIncome]);
   const thisMonthNet = useMemo(
     () => thisMonthIncomeTotal - thisMonthTotal,
     [thisMonthIncomeTotal, thisMonthTotal],
@@ -403,52 +404,79 @@ export default function DashboardPage() {
                     description="Add some expenses to see category insights."
                   />
                 )}
-              
-      <Dialog open={salaryOpen} onClose={() => (salaryBusy ? null : setSalaryOpen(false))} fullWidth maxWidth="xs">
-        <DialogTitle>Edit salary ({monthKey})</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            {salaryErr ? <Typography color="error" variant="body2">{salaryErr}</Typography> : null}
-            <TextField
-              label="Salary amount (USD)"
-              
-              value={salaryAmount}
-              onChange={(e) => setSalaryAmount(Number(e.target.value || 0))}
-              fullWidth
-            />
-            <FormControlLabel
-              control={
-                <Switch checked={salaryApplyToFuture} onChange={(e) => setSalaryApplyToFuture(e.target.checked)} />
-              }
-              label="Apply as default for future months (Option B)"
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSalaryOpen(false)} disabled={salaryBusy}>Cancel</Button>
-          <Button
-            variant="contained"
-            disabled={salaryBusy}
-            onClick={async () => {
-              setSalaryBusy(true);
-              setSalaryErr("");
-              try {
-                await apiEditSalaryForMonth({ month: monthKey, amount: Number(salaryAmount || 0), applyToFuture: salaryApplyToFuture });
-                setSalaryOpen(false);
-                // refresh month income so salary updates
-                reloadIncome();
-              } catch (e) {
-                setSalaryErr(e?.response?.data?.message || "Failed to update salary.");
-              } finally {
-                setSalaryBusy(false);
-              }
-            }}
-          >
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-</Box>
+
+                <Dialog
+                  open={salaryOpen}
+                  onClose={() => (salaryBusy ? null : setSalaryOpen(false))}
+                  fullWidth
+                  maxWidth="xs"
+                >
+                  <DialogTitle>Edit salary ({monthKey})</DialogTitle>
+                  <DialogContent>
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                      {salaryErr ? (
+                        <Typography color="error" variant="body2">
+                          {salaryErr}
+                        </Typography>
+                      ) : null}
+                      <TextField
+                        label="Salary amount (USD)"
+                        value={salaryAmount}
+                        onChange={(e) =>
+                          setSalaryAmount(Number(e.target.value || 0))
+                        }
+                        fullWidth
+                      />
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={salaryApplyToFuture}
+                            onChange={(e) =>
+                              setSalaryApplyToFuture(e.target.checked)
+                            }
+                          />
+                        }
+                        label="Apply as default for future months (Option B)"
+                      />
+                    </Stack>
+                  </DialogContent>
+                  <DialogActions>
+                    <Button
+                      onClick={() => setSalaryOpen(false)}
+                      disabled={salaryBusy}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="contained"
+                      disabled={salaryBusy}
+                      onClick={async () => {
+                        setSalaryBusy(true);
+                        setSalaryErr("");
+                        try {
+                          await apiEditSalaryForMonth({
+                            month: monthKey,
+                            amount: Number(salaryAmount || 0),
+                            applyToFuture: salaryApplyToFuture,
+                          });
+                          setSalaryOpen(false);
+                          // refresh month income so salary updates
+                          reloadIncome();
+                        } catch (e) {
+                          setSalaryErr(
+                            e?.response?.data?.message ||
+                              "Failed to update salary.",
+                          );
+                        } finally {
+                          setSalaryBusy(false);
+                        }
+                      }}
+                    >
+                      Save
+                    </Button>
+                  </DialogActions>
+                </Dialog>
+              </Box>
             </CardContent>
           </Card>
         </Grid>

@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDateFnsV3 } from "@mui/x-date-pickers/AdapterDateFnsV3";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFnsV3";
 import { buildTheme } from "./theme/appTheme";
 import { SettingsProvider, useSettings } from "./context/SettingsContext";
 import { AuthProvider } from "./context/AuthContext";
@@ -13,7 +13,7 @@ function ThemeBridge({ children }) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <LocalizationProvider dateAdapter={AdapterDateFnsV3}>
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
         {children}
       </LocalizationProvider>
     </ThemeProvider>
