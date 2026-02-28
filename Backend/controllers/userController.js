@@ -2,13 +2,15 @@ import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
-function cookieOptions() {
-  const isProd = process.env.NODE_ENV === "production";
+function cookieOptions(req) {
+  const isHttps = req.secure || req.headers["x-forwarded-proto"] === "https";
+
   return {
     httpOnly: true,
-    secure: isProd, // secure cookies in prod (https)
-    sameSite: isProd ? "none" : "lax",
+    secure: isHttps,
+    sameSite: isHttps ? "none" : "lax",
     maxAge: 72 * 60 * 60 * 1000, // 72h
+    path: "/",
   };
 }
 
@@ -16,7 +18,7 @@ function signToken(user) {
   return jwt.sign(
     { userId: user._id, username: user.username, email: user.email },
     process.env.JWT_SECRET,
-    { expiresIn: "72h" }
+    { expiresIn: "72h" },
   );
 }
 
@@ -37,7 +39,7 @@ export const register = async (req, res) => {
     await user.save();
 
     const token = signToken(user);
-    res.cookie("token", token, cookieOptions());
+    res.cookie("token", token, cookieOptions(req));
 
     res.status(201).json({
       message: "User registered & logged in successfully!",
@@ -62,7 +64,7 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
 
     const token = signToken(user);
-    res.cookie("token", token, cookieOptions());
+    res.cookie("token", token, cookieOptions(req));
 
     res.json({
       message: "Login successful",
@@ -84,6 +86,7 @@ export const me = async (req, res) => {
 };
 
 export const logout = (req, res) => {
-  res.clearCookie("token");
+  const opts = cookieOptions(req);
+  res.clearCookie("token", { ...opts, maxAge: 0 });
   res.json({ message: "Logged out successfully" });
 };
