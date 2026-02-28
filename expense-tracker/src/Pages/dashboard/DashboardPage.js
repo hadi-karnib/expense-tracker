@@ -65,7 +65,7 @@ function sum(items) {
 export default function DashboardPage() {
   const { expenses, loading: loadingExpenses } = useExpensesData();
   const { debts, loading: loadingDebts } = useDebtsData();
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const monthKey = format(now, "yyyy-MM");
   const {
     income: monthIncome,
