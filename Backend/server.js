@@ -22,8 +22,26 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:3000";
-app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
+const allowedOrigins = [
+  process.env.CLIENT_ORIGIN, // set this to https://expense-tracker.vercel.app
+  "http://localhost:3000",
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true); // Postman / server-to-server
+
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+
+      // ✅ allow any Vercel preview deployment
+      if (origin.endsWith(".vercel.app")) return cb(null, true);
+
+      return cb(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  }),
+);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/expense", expenseRoutes);
@@ -36,4 +54,6 @@ app.use("/api/savings", savingsRoutes);
 app.use("/api/import", importRoutes);
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, () =>
+  console.log(`Server running on http://localhost:${PORT}`),
+);
